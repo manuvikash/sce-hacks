@@ -44,12 +44,12 @@ function App() {
 
     try {
       // Send repo URL to backend
-      const response = await fetch('/api/generate-docs', {
+      const response = await fetch('http://localhost:8000/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ repoUrl: repoUrl.trim() }),
+        body: JSON.stringify({ repo_url: repoUrl.trim() }),
       });
 
       if (!response.ok) {
