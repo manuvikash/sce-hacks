@@ -4,20 +4,9 @@ import './App.css';
 function App() {
   const [repoUrl, setRepoUrl] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [currentStep, setCurrentStep] = useState(0);
   const [processingStatus, setProcessingStatus] = useState('');
   const [docsUrl, setDocsUrl] = useState('');
   const [error, setError] = useState('');
-  const [stepStatuses, setStepStatuses] = useState({});
-
-  const steps = [
-    'Processing',
-    'Cloning Repo',
-    'Parsing files',
-    'Identifying APIs',
-    'Creating OpenAPI Specs yaml',
-    'Creating Docs'
-  ];
 
   const validateGitHubUrl = (url) => {
     const githubRegex = /^https:\/\/github\.com\/[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+\/?$/;
@@ -37,10 +26,9 @@ function App() {
     }
 
     setIsProcessing(true);
-    setCurrentStep(0);
     setError('');
     setDocsUrl('');
-    setStepStatuses({});
+    setProcessingStatus('Processing your request...');
 
     try {
       // Send repo URL to backend
@@ -53,69 +41,26 @@ function App() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to start processing');
+        throw new Error('Failed to process request');
       }
 
       const data = await response.json();
-      console.log('Processing started:', data);
+      console.log('Processing completed:', data);
       
-      // Start polling for status
-      pollStatus();
+      // Mark as completed
+      setProcessingStatus('Completed!');
+      setIsProcessing(false);
+      
+      // If there's a docs URL in the response, set it
+      if (data.docs_url || data.docsUrl) {
+        setDocsUrl(data.docs_url || data.docsUrl);
+      }
     } catch (err) {
-      // Move to processing page to show error
-      setIsProcessing(true);
-      setStepStatuses({ 0: 'failed' });
       setError(err.message);
+      setProcessingStatus('Failed');
     }
   };
 
-  const pollStatus = async () => {
-    const pollInterval = setInterval(async () => {
-      try {
-        const response = await fetch('/api/status');
-        const data = await response.json();
-        
-        setProcessingStatus(data.status);
-        setCurrentStep(data.currentStep || 0);
-        
-        // Update step statuses based on current step
-        const newStepStatuses = {};
-        for (let i = 0; i < steps.length; i++) {
-          if (i < (data.currentStep || 0)) {
-            newStepStatuses[i] = 'completed';
-          } else if (i === (data.currentStep || 0)) {
-            newStepStatuses[i] = 'active';
-          } else {
-            newStepStatuses[i] = 'pending';
-          }
-        }
-        setStepStatuses(newStepStatuses);
-        
-        if (data.completed) {
-          clearInterval(pollInterval);
-          setIsProcessing(false);
-          // Mark all steps as completed
-          const completedStatuses = {};
-          for (let i = 0; i < steps.length; i++) {
-            completedStatuses[i] = 'completed';
-          }
-          setStepStatuses(completedStatuses);
-          if (data.docsUrl) {
-            setDocsUrl(data.docsUrl);
-          }
-        } else if (data.error) {
-          clearInterval(pollInterval);
-          // Mark current step as failed
-          const failedStatuses = { ...newStepStatuses };
-          failedStatuses[data.currentStep || 0] = 'failed';
-          setStepStatuses(failedStatuses);
-          setError(data.error);
-        }
-      } catch (err) {
-        console.error('Error polling status:', err);
-      }
-    }, 2000); // Poll every 2 seconds
-  };
 
   const handleViewDocs = () => {
     if (docsUrl) {
@@ -159,57 +104,38 @@ function App() {
           <div className="processing-page">
             <div className="processing-container">
               <h2 className="processing-title">Generating Your API Documentation</h2>
-              <div className="steps-container">
-                {steps.map((step, index) => {
-                  const status = stepStatuses[index] || 'pending';
-                  return (
-                    <div
-                      key={index}
-                      className={`step ${status}`}
-                    >
-                      <div className="step-number">
-                        {status === 'completed' ? (
-                          <span className="step-icon">✓</span>
-                        ) : status === 'failed' ? (
-                          <span className="step-icon">✕</span>
-                        ) : status === 'active' ? (
-                          <div className="spinner"></div>
-                        ) : (
-                          <span className="step-number-text">{index + 1}</span>
-                        )}
-                      </div>
-                      <div className="step-text">{step}</div>
-                    </div>
-                  );
-                })}
+              
+              <div className="processing-status">
+                <div className="status-indicator">
+                  {error ? (
+                    <div className="status-icon failed">✕</div>
+                  ) : processingStatus === 'Completed!' ? (
+                    <div className="status-icon completed">✓</div>
+                  ) : (
+                    <div className="spinner"></div>
+                  )}
+                </div>
+                <div className="status-text">
+                  {error ? 'Processing Failed' : processingStatus}
+                </div>
               </div>
+
               {error ? (
                 <div className="error-container">
-                  <div className="error-icon">⚠️</div>
-                  <div className="error-title">Processing Failed</div>
                   <div className="error-message-processing">{error}</div>
                   <button onClick={() => {
                     setIsProcessing(false);
                     setError('');
-                    setCurrentStep(0);
                     setProcessingStatus('');
                     setDocsUrl('');
-                    setStepStatuses({});
                   }} className="retry-btn">
                     Try Again
                   </button>
                 </div>
-              ) : (
-                <>
-                  <div className="status-message">
-                    {processingStatus || `Step ${currentStep + 1}: ${steps[currentStep]}`}
-                  </div>
-                  {docsUrl && (
-                    <button onClick={handleViewDocs} className="view-docs-btn">
-                      View Generated Docs
-                    </button>
-                  )}
-                </>
+              ) : processingStatus === 'Completed!' && docsUrl && (
+                <button onClick={handleViewDocs} className="view-docs-btn">
+                  View Generated Docs
+                </button>
               )}
             </div>
           </div>
