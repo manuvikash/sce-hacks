@@ -102,7 +102,7 @@ Issues and feature requests can be submitted through the [GitHub Issues](../../i
 
 ## 👨‍💻 Authors
 - [Manuvikash Saravanakumar](https://github.com/manuvikash)  
-- [Satheesh Kumar G R](https://https://github.com/satheesh18)  
+- [Satheesh Kumar G R](https://github.com/satheesh18)  
 
 ---
 
